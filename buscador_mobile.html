@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Buscador Lavandería">
+    <title>Buscador Lavandería - SGO 5300</title>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #475569;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .title-section h1 {
+            margin: 0;
+            font-size: clamp(18px, 5vw, 24px);
+            font-weight: bold;
+            color: #fbbf24;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .title-section p {
+            display: none;
+        }
+
+        .stats {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .stat-item {
+            font-size: 11px;
+            color: #cbd5e1;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .upload-zone {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .upload-label {
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-box {
+            border: 2px dashed #fbbf24;
+            border-radius: 12px;
+            padding: 30px 15px;
+            text-align: center;
+            background: rgba(251, 191, 36, 0.05);
+            transition: all 0.3s ease;
+            max-width: 100%;
+        }
+
+        .upload-box:active {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: #fcd34d;
+            transform: scale(0.98);
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 8px 0;
+            color: #fbbf24;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 5px 0 0 0;
+        }
+
+        #fileInput, #fileInput2 {
+            display: none;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin: 5px 0;
+            display: none;
+            font-size: 12px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid #22c55e;
+            color: #86efac;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin: 5px 0;
+            display: none;
+            font-size: 12px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .search-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .change-file-row {
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .change-file-btn {
+            cursor: pointer;
+            font-size: 12px;
+            padding: 8px 12px;
+            background: rgba(100, 116, 139, 0.3);
+            border: 1px solid #64748b;
+            border-radius: 4px;
+            color: #cbd5e1;
+            transition: all 0.2s ease;
+            width: 100%;
+            touch-action: manipulation;
+        }
+
+        .change-file-btn:active {
+            background: rgba(100, 116, 139, 0.6);
+        }
+
+        .search-controls {
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .filter-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .filter-btn {
+            padding: 10px 12px;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(71, 85, 105, 0.3);
+            color: #cbd5e1;
+            touch-action: manipulation;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filter-btn.active {
+            background: #fbbf24;
+            color: #0f172a;
+            border-color: #fbbf24;
+        }
+
+        .filter-btn:active:not(.active) {
+            background: rgba(71, 85, 105, 0.6);
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 14px 14px;
+            font-size: 18px;
+            background: #1e293b;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            color: #e2e8f0;
+            outline: none;
+            transition: border-color 0.3s ease;
+            touch-action: manipulation;
+        }
+
+        #searchInput:focus {
+            border-color: #fbbf24;
+            font-size: 18px;
+        }
+
+        .results-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 8px;
+        }
+
+        .result-count {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 12px 12px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .result-card:active {
+            border-color: #fbbf24;
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .result-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .result-ot {
+            font-size: 11px;
+            color: #fbbf24;
+            font-weight: bold;
+            margin-bottom: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        .result-nombre {
+            font-size: 14px;
+            color: #f1f5f9;
+            font-weight: 600;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .result-empresa {
+            font-size: 11px;
+            color: #94a3b8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .result-right {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .ubicacion-badge {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+
+        .ubicacion-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            min-width: 50px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 30px 15px;
+            color: #94a3b8;
+        }
+
+        .no-results-text {
+            font-size: 14px;
+            margin: 0 0 6px 0;
+        }
+
+        .no-results-hint {
+            font-size: 12px;
+            margin: 0;
+            color: #64748b;
+        }
+
+        footer {
+            margin-top: 5px;
+            padding-top: 8px;
+            border-top: 1px solid #475569;
+            text-align: center;
+            font-size: 10px;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        footer p {
+            margin: 2px 0;
+        }
+
+        .results-section::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .results-section::-webkit-scrollbar-track {
+            background: rgba(71, 85, 105, 0.2);
+            border-radius: 10px;
+        }
+
+        .results-section::-webkit-scrollbar-thumb {
+            background: rgba(251, 191, 36, 0.5);
+            border-radius: 10px;
+        }
+
+        .results-section::-webkit-scrollbar-thumb:active {
+            background: rgba(251, 191, 36, 0.8);
+        }
+
+        /* Optimización para pantallas muy pequeñas */
+        @media (max-height: 600px) {
+            header {
+                margin-bottom: 5px;
+                padding-bottom: 5px;
+            }
+
+            .upload-icon {
+                font-size: 32px;
+                margin-bottom: 8px;
+            }
+
+            .upload-text {
+                font-size: 14px;
+                margin: 5px 0;
+            }
+
+            .filter-buttons {
+                gap: 6px;
+                margin-bottom: 8px;
+            }
+
+            .filter-btn {
+                padding: 8px 10px;
+                font-size: 11px;
+                min-height: 36px;
+            }
+
+            #searchInput {
+                padding: 12px 12px;
+                font-size: 16px;
+            }
+
+            .result-card {
+                padding: 10px;
+            }
+
+            .result-nombre {
+                font-size: 13px;
+            }
+
+            .ubicacion-value {
+                font-size: 16px;
+                padding: 4px 8px;
+            }
+        }
+
+        /* Landscape mode */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .upload-icon {
+                font-size: 28px;
+                margin-bottom: 5px;
+            }
+
+            .upload-text {
+                font-size: 13px;
+            }
+
+            .filter-btn {
+                min-height: 32px;
+                padding: 6px 10px;
+            }
+
+            #searchInput {
+                padding: 10px;
+                font-size: 16px;
+            }
+        }
+
+        /* Dispositivos más grandes (tablets) */
+        @media (min-width: 768px) {
+            .container {
+                max-width: 900px;
+            }
+
+            header {
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+            }
+
+            .title-section p {
+                display: block;
+            }
+
+            .upload-box {
+                padding: 50px 20px;
+            }
+
+            .upload-icon {
+                font-size: 48px;
+                margin-bottom: 15px;
+            }
+
+            .filter-buttons {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+
+            .result-card {
+                padding: 14px 16px;
+            }
+
+            .result-nombre {
+                font-size: 15px;
+            }
+
+            .ubicacion-value {
+                font-size: 20px;
+                padding: 6px 12px;
+            }
+        }
+
+        /* Prevenir zoom en inputs en iOS */
+        @supports (-webkit-touch-callout: none) {
+            #searchInput {
+                font-size: 16px;
+            }
+        }
+
+        /* Safe area para notch */
+        @supports (padding: max(0px)) {
+            body {
+                padding-top: max(10px, env(safe-area-inset-top));
+                padding-left: max(10px, env(safe-area-inset-left));
+                padding-right: max(10px, env(safe-area-inset-right));
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-section">
+                <h1>🔍 BUSCADOR</h1>
+                <p>SGO 5300 - Pampa Lina</p>
+            </div>
+            <div class="stats" id="stats" style="display: none;">
+                <span class="stat-item" id="statItem"></span>
+            </div>
+        </header>
+
+        <div id="successMessage" class="success-message"></div>
+        <div id="errorMessage" class="error-message"></div>
+
+        <div id="uploadZone" class="upload-zone">
+            <label class="upload-label">
+                <div class="upload-box">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">Toca para cargar</p>
+                    <p class="upload-hint">Excel o CSV</p>
+                </div>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+            </label>
+        </div>
+
+        <div id="searchSection" class="search-section hidden">
+            <div class="change-file-row">
+                <label class="change-file-btn">
+                    ↻ Cambiar archivo
+                    <input type="file" id="fileInput2" accept=".xlsx,.xls,.csv">
+                </label>
+            </div>
+
+            <div class="search-controls">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="todos">Todos</button>
+                    <button class="filter-btn" data-filter="ot">OT</button>
+                    <button class="filter-btn" data-filter="nombre">Nombre</button>
+                </div>
+                <input type="text" id="searchInput" placeholder="Busca..." autofocus inputmode="text">
+            </div>
+
+            <div class="results-section">
+                <p class="result-count" id="resultCount"></p>
+                <div id="resultsList" class="results-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Le Grand Chic SpA © 2026</p>
+        <p>Creado por Leonardo Rebolledo</p>
+    </footer>
+
+    <script>
+        let allData = [];
+        let currentFilter = 'todos';
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = '⚠️ ' + message;
+            errorDiv.classList.add('show');
+            console.error('Error:', message);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = '✅ ' + message;
+            successDiv.classList.add('show');
+            setTimeout(() => {
+                successDiv.classList.remove('show');
+            }, 3000);
+        }
+
+        function parseCSV(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            if (lines.length < 2) throw new Error('Archivo CSV vacío');
+
+            const headers = lines[0].split(',').map(h => h.trim());
+            const otIndex = headers.findIndex(h => h.toUpperCase() === 'OT');
+            const ubicIndex = headers.findIndex(h => h.toUpperCase() === 'UBICACIÓN');
+            const nombreIndex = headers.findIndex(h => h.toUpperCase() === 'NOMBRE');
+            const empresaIndex = headers.findIndex(h => h.toUpperCase().includes('EMPRESA'));
+
+            if (otIndex === -1 || ubicIndex === -1 || nombreIndex === -1) {
+                throw new Error('Columnas: OT, UBICACIÓN, NOMBRE');
+            }
+
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',').map(c => c.trim());
+                if (cols[otIndex]) {
+                    data.push({
+                        ot: String(cols[otIndex]),
+                        ubicacion: String(cols[ubicIndex] || ''),
+                        nombre: String(cols[nombreIndex] || ''),
+                        empresa: empresaIndex >= 0 ? String(cols[empresaIndex] || '') : ''
+                    });
+                }
+            }
+            return data;
+        }
+
+        function parseExcel(arrayBuffer) {
+            if (typeof XLSX === 'undefined') {
+                throw new Error('Usa CSV o intenta en otro navegador');
+            }
+
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            return jsonData
+                .filter(row => row.OT && row.UBICACIÓN && row.NOMBRE)
+                .map(row => ({
+                    ot: String(row.OT).trim(),
+                    ubicacion: String(row.UBICACIÓN).trim(),
+                    nombre: String(row.NOMBRE).trim(),
+                    empresa: row['EMPRESA '] ? String(row['EMPRESA ']).trim() : '',
+                }));
+        }
+
+        function loadFile(file) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    let parsedData = [];
+
+                    if (file.name.endsWith('.csv')) {
+                        const text = e.target.result;
+                        parsedData = parseCSV(text);
+                    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                        if (typeof XLSX === 'undefined') {
+                            showError('Excel no soportado. Convierte a CSV');
+                            return;
+                        }
+                        parsedData = parseExcel(e.target.result);
+                    } else {
+                        throw new Error('Formato no soportado');
+                    }
+
+                    if (parsedData.length === 0) {
+                        throw new Error('Sin datos válidos');
+                    }
+
+                    allData = parsedData;
+
+                    document.getElementById('uploadZone').classList.add('hidden');
+                    document.getElementById('searchSection').classList.remove('hidden');
+                    document.getElementById('stats').style.display = 'flex';
+                    document.getElementById('statItem').textContent = `${allData.length} registros`;
+                    document.getElementById('searchInput').focus();
+                    document.getElementById('resultsList').innerHTML = '';
+
+                    showSuccess(`${allData.length} registros cargados`);
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError(error.message);
+                }
+            };
+
+            reader.onerror = () => {
+                showError('Error al leer archivo');
+            };
+
+            if (file.name.endsWith('.csv')) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function search() {
+            const term = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (!term) {
+                document.getElementById('resultsList').innerHTML = '';
+                document.getElementById('resultCount').textContent = '';
+                return;
+            }
+
+            let resultados = allData.filter(item => {
+                if (currentFilter === 'ot') {
+                    return item.ot.includes(term);
+                } else if (currentFilter === 'nombre') {
+                    return item.nombre.toLowerCase().includes(term);
+                } else {
+                    return item.ot.includes(term) || item.nombre.toLowerCase().includes(term);
+                }
+            }).slice(0, 50);
+
+            if (resultados.length === 0) {
+                document.getElementById('resultCount').textContent = '';
+                document.getElementById('resultsList').innerHTML = `
+                    <div class="no-results">
+                        <p class="no-results-text">❌ Sin resultados</p>
+                        <p class="no-results-hint">Intenta otro término</p>
+                    </div>
+                `;
+            } else {
+                document.getElementById('resultCount').textContent = 
+                    resultados.length === 1 
+                        ? '1 encontrado' 
+                        : `${resultados.length} encontrados`;
+
+                document.getElementById('resultsList').innerHTML = resultados
+                    .map(item => `
+                        <div class="result-card">
+                            <div class="result-row">
+                                <div class="result-left">
+                                    <div class="result-ot">OT ${item.ot}</div>
+                                    <div class="result-nombre">${item.nombre}</div>
+                                    ${item.empresa ? `<div class="result-empresa">${item.empresa}</div>` : ''}
+                                </div>
+                                <div class="result-right">
+                                    <div class="ubicacion-badge">Casillero</div>
+                                    <div class="ubicacion-value">${item.ubicacion}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+            }
+        }
+
+        document.getElementById('fileInput').addEventListener('change', (e) => loadFile(e.target.files[0]));
+        document.getElementById('fileInput2').addEventListener('change', (e) => loadFile(e.target.files[0]));
+        document.getElementById('searchInput').addEventListener('input', search);
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                search();
+            });
+        });
+
+        const uploadZone = document.getElementById('uploadZone');
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.style.opacity = '0.7';
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.style.opacity = '1';
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.style.opacity = '1';
+            const file = e.dataTransfer.files[0];
+            if (file) loadFile(file);
+        });
+
+        window.addEventListener('load', () => {
+            console.log('🚀 Buscador móvil iniciado');
+            if (typeof XLSX !== 'undefined') {
+                console.log('✅ XLSX disponible');
+            } else {
+                console.warn('⚠️ Solo CSV funcionará');
+            }
+        });
+
+        // Prevenir zoom con doble tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>
